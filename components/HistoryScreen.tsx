@@ -114,6 +114,14 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
     return 'text-brand-danger';
   };
 
+  // Helper to safely get language or null
+  const getLanguageLabel = (phrase: any) => {
+    if (phrase.language) return phrase.language;
+    // Fallback to legacy check in text, but if not found, return null to hide badge
+    const match = phrase.text.match(/\((.*?)\)/);
+    return match ? match[1] : null; 
+  };
+
   // Custom Tooltip for Charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -265,13 +273,17 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
         <>
             <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Recent Sessions</h3>
             <div className="grid grid-cols-1 gap-4 overflow-y-auto pb-20">
-            {[...history].reverse().map((item) => (
+            {[...history].reverse().map((item) => {
+                const langLabel = getLanguageLabel(item.phrase);
+                return (
                 <div key={item.id} className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                 
                 <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3 text-xs text-slate-400 mb-1">
                         <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {formatDate(item.timestamp)}</span>
-                        <span className="bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">{item.phrase.text.match(/\((.*?)\)/)?.[1] || 'Unknown'}</span>
+                        {langLabel && (
+                            <span className="bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">{langLabel}</span>
+                        )}
                     </div>
                     <h3 className="text-lg font-medium text-slate-100">{item.phrase.text}</h3>
                     <p className="text-sm text-slate-400 italic">{item.phrase.translation}</p>
@@ -292,7 +304,7 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
                 </div>
 
                 </div>
-            ))}
+            )})}
             </div>
         </>
       )}

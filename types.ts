@@ -35,6 +35,7 @@ export interface PhraseData {
   translation: string;
   stressFocus: string; // The word/part that needs logical stress
   audioBase64?: string; // Reference audio (Base64)
+  language?: string; // Target language of the phrase
 }
 
 export interface WordAnalysis {

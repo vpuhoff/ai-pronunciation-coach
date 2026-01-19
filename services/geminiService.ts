@@ -56,7 +56,8 @@ export const generateTrainingContent = async (
       id: `phrase-${index}-${Date.now()}`, // Add timestamp to ID to ensure uniqueness
       text: item.text,
       translation: item.translation,
-      stressFocus: item.stressFocus
+      stressFocus: item.stressFocus,
+      language: targetLang
     }));
 
   } catch (error) {
@@ -117,7 +118,8 @@ export const generateCustomPhrase = async (
             id: `custom-${Date.now()}`,
             text: item.text,
             translation: item.translation,
-            stressFocus: item.stressFocus
+            stressFocus: item.stressFocus,
+            language: targetLang
         };
     } catch (e) {
         console.error("Custom phrase generation error", e);
@@ -288,7 +290,7 @@ export const askAiCoach = async (
 
 // Fallback for dev without API key
 const mockPhrases = (lang: string, topic: string): PhraseData[] => [
-  { id: '1', text: `Hello, how are you today? (${lang})`, translation: "Example translation", stressFocus: "today" },
-  { id: '2', text: `I would like a coffee please.`, translation: "Example translation", stressFocus: "coffee" },
-  { id: '3', text: `Could you help me with this?`, translation: "Example translation", stressFocus: "help" },
+  { id: '1', text: `Hello, how are you today? (${lang})`, translation: "Example translation", stressFocus: "today", language: lang },
+  { id: '2', text: `I would like a coffee please.`, translation: "Example translation", stressFocus: "coffee", language: lang },
+  { id: '3', text: `Could you help me with this?`, translation: "Example translation", stressFocus: "help", language: lang },
 ];
