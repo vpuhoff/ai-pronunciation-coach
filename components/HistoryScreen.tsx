@@ -23,7 +23,18 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
   };
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(history, null, 2);
+    // Create a clean version of history for export, ensuring no pitch curve data is included
+    // (This handles legacy history items that might still have it)
+    const exportData = history.map(item => ({
+        ...item,
+        result: {
+            ...item.result,
+            pitchCurveReference: [],
+            pitchCurveUser: []
+        }
+    }));
+
+    const dataStr = JSON.stringify(exportData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

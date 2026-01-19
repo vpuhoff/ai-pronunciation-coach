@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { PhraseData, Language, Difficulty, WordAnalysis } from "../types";
 
@@ -18,13 +19,16 @@ export const generateTrainingContent = async (
 
   try {
     const prompt = `
-      Generate 3 distinct phrases for a language learner.
+      Generate 3 unique, distinct, and conversational phrases for a language learner.
       Target Language: ${targetLang}
       Native Language: ${nativeLang}
       Topic: ${topic}
       Level: ${difficulty}
       
-      For each phrase, identify the specific word or segment that requires logical stress (prosody focus).
+      Instructions:
+      1. Create natural-sounding phrases that fit the context.
+      2. Avoid generic textbook examples or repetitive structures.
+      3. For each phrase, identify the specific word or segment that requires logical stress (prosody focus).
     `;
 
     const response = await ai.models.generateContent({
@@ -49,7 +53,7 @@ export const generateTrainingContent = async (
 
     const data = JSON.parse(response.text || "[]");
     return data.map((item: any, index: number) => ({
-      id: `phrase-${index}`,
+      id: `phrase-${index}-${Date.now()}`, // Add timestamp to ID to ensure uniqueness
       text: item.text,
       translation: item.translation,
       stressFocus: item.stressFocus
@@ -111,7 +115,7 @@ export const generateCoachFeedback = async (
         `;
 
         const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview", // Updated to gemini-3-flash-preview
+            model: "gemini-3-flash-preview", 
             contents: {
                 parts: [
                     { text: prompt },

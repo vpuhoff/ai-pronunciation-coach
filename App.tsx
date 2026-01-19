@@ -36,11 +36,19 @@ export default function App() {
   }, [history]);
 
   const saveToHistory = (phrase: PhraseData, result: AnalysisResult) => {
+    // We remove heavy pitch curve data as it's not needed for history listing
+    // and takes up significant storage space.
+    const lightweightResult: AnalysisResult = {
+      ...result,
+      pitchCurveReference: [],
+      pitchCurveUser: []
+    };
+
     const newItem: HistoryItem = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       phrase: phrase,
-      result: result
+      result: lightweightResult
     };
     setHistory(prev => [...prev, newItem]);
   };
@@ -119,6 +127,7 @@ export default function App() {
           // Merge or replace? Let's merge for now, avoiding duplicates by ID
           setHistory(prev => {
              const existingIds = new Set(prev.map(i => i.id));
+             // Ensure imported items also don't carry heavy data if possible
              const newItems = importedHistory.filter((i: HistoryItem) => !existingIds.has(i.id));
              return [...prev, ...newItems];
           });
@@ -175,6 +184,7 @@ export default function App() {
                 setCurrentScreen(Screen.HISTORY);
               }
             }}
+            onExit={() => setCurrentScreen(Screen.HISTORY)}
         />
       )}
 

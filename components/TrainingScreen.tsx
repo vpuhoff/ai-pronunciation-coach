@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PhraseData } from '../types';
-import { Mic, Play, Square, Loader2, Volume2, SkipForward } from 'lucide-react';
+import { Mic, Play, Square, Loader2, Volume2, SkipForward, X } from 'lucide-react';
 import { generateReferenceAudio as generateGeminiAudio } from '../services/geminiService';
 import { generateElevenLabsAudio } from '../services/elevenLabsService';
 import { pcmToBase64Wav } from '../services/audioUtils';
@@ -9,9 +9,10 @@ interface Props {
   phrase: PhraseData;
   onRecordFinish: (audioBlob: Blob, refAudioData: string | undefined) => void;
   onNext: () => void;
+  onExit: () => void;
 }
 
-const TrainingScreen: React.FC<Props> = ({ phrase, onRecordFinish, onNext }) => {
+const TrainingScreen: React.FC<Props> = ({ phrase, onRecordFinish, onNext, onExit }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -133,9 +134,18 @@ const TrainingScreen: React.FC<Props> = ({ phrase, onRecordFinish, onNext }) => 
     <div className="flex flex-col h-full items-center p-6 w-full max-w-5xl mx-auto relative min-h-screen">
       {/* Header Controls */}
       <div className="w-full flex justify-between items-center mb-12">
-        <span className="text-sm font-bold text-slate-500 tracking-widest uppercase border border-slate-700 px-3 py-1 rounded-full">Training Session</span>
-        <button onClick={onNext} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium transition-colors">
-           Skip Phrase <SkipForward className="w-4 h-4" />
+        <button 
+            onClick={onExit}
+            className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium transition-colors p-2 -ml-2 rounded-lg hover:bg-slate-800"
+            title="Exit to History"
+        >
+            <X className="w-6 h-6" /> <span className="hidden sm:inline">Exit</span>
+        </button>
+
+        <span className="text-sm font-bold text-slate-500 tracking-widest uppercase border border-slate-700 px-3 py-1 rounded-full hidden md:inline-block">Training Session</span>
+        
+        <button onClick={onNext} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium transition-colors p-2 -mr-2 rounded-lg hover:bg-slate-800">
+           <span className="hidden sm:inline">Skip Phrase</span> <SkipForward className="w-4 h-4" />
         </button>
       </div>
 
