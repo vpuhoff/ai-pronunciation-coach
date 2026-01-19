@@ -1,3 +1,4 @@
+
 import { AnalysisResult, PhraseData } from "../types";
 import { generateCoachFeedback } from "./geminiService";
 
@@ -186,7 +187,8 @@ export const analyzeAudio = async (
   userBlob: Blob,
   referenceAudioData: string | undefined,
   phrase: PhraseData,
-  nativeLanguage: string
+  nativeLanguage: string,
+  previousAttempts: AnalysisResult[] = []
 ): Promise<AnalysisResult> => {
   
   // 1. Prepare Inputs for Multimodal LLM
@@ -195,7 +197,8 @@ export const analyzeAudio = async (
 
   // 2. Gemini Analysis (Parallel Request)
   // We send the audio to Gemini to get the "Pronunciation Score" and text feedback
-  const geminiPromise = generateCoachFeedback(phrase.text, userBase64, nativeLanguage);
+  // Pass previous attempts for context
+  const geminiPromise = generateCoachFeedback(phrase.text, userBase64, nativeLanguage, previousAttempts);
 
   // 3. DSP Analysis (Client-side)
   // We calculate Pitch Contour and DTW alignment for the visualization

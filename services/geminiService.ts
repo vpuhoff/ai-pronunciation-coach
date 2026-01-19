@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { PhraseData, Language, Difficulty, WordAnalysis } from "../types";
+import { PhraseData, Language, Difficulty, WordAnalysis, AnalysisResult } from "../types";
 
 // Ensure API Key exists
 const apiKey = process.env.API_KEY || '';
@@ -153,7 +153,8 @@ export const generateReferenceAudio = async (text: string, voiceName: string = '
 export const generateCoachFeedback = async (
     originalText: string,
     userAudioBase64: string,
-    nativeLanguage: string
+    nativeLanguage: string,
+    previousAttempts: AnalysisResult[] = []
 ): Promise<{ overallScore: number, feedback: string, words: WordAnalysis[] }> => {
     
     // Default fallback if no API key
@@ -166,12 +167,34 @@ export const generateCoachFeedback = async (
     }
 
     try {
+        // Construct history context
+        let historyContext = "";
+        if (previousAttempts && previousAttempts.length > 0) {
+            const summary = previousAttempts.map((attempt, index) => {
+                const errors = attempt.words.filter(w => w.status !== 'perfect').map(w => w.word).join(', ');
+                return `Attempt #${index + 1}: Score ${attempt.overallScore}. Feedback: "${attempt.feedback}". Issues: ${errors || "None"}.`;
+            }).join('\n');
+            
+            historyContext = `
+            \n--- PREVIOUS ATTEMPTS HISTORY ---
+            The user has practiced this phrase ${previousAttempts.length} times before in this session.
+            ${summary}
+            
+            INSTRUCTION: Compare the CURRENT attempt to the previous ones. 
+            - If they fixed a previous error, praise them specifically for that improvement.
+            - If they repeated the same error, gently point out that it is still persisting.
+            - If they got worse, encourage them to recall the rhythm of their best attempt.
+            ---------------------------------
+            `;
+        }
+
         const prompt = `
-        You are a strict phonetics coach. Analyze the user's pronunciation of the phrase: "${originalText}".
+        You are a strict but encouraging phonetics coach. Analyze the user's pronunciation of the phrase: "${originalText}".
+        ${historyContext}
         
         1. Give an overall pronunciation score (0-100).
         2. Analyze each word. If a word is mispronounced, mark status as 'error'. If intonation/stress is off, 'warning'. Otherwise 'perfect'.
-        3. Provide helpful feedback in ${nativeLanguage} (2 sentences max).
+        3. Provide helpful feedback in ${nativeLanguage} (2 sentences max). Address the user directly ("You...").
         `;
 
         const response = await ai.models.generateContent({

@@ -19,6 +19,9 @@ export default function App() {
   
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   
+  // Track attempts for the CURRENT phrase to provide context to AI
+  const [sessionAttempts, setSessionAttempts] = useState<AnalysisResult[]>([]);
+  
   // Temporary holding for the blob until we save to history or discard
   const [currentUserBlob, setCurrentUserBlob] = useState<Blob | null>(null);
   
@@ -93,6 +96,7 @@ export default function App() {
     
     setPhrases(generatedPhrases);
     setCurrentPhraseIndex(0);
+    setSessionAttempts([]); // Reset attempts
     setIsProcessing(false);
     setCurrentScreen(Screen.TRAINING);
   };
@@ -106,9 +110,20 @@ export default function App() {
 
     const currentPhrase = phrases[currentPhraseIndex];
     const nativeLang = config?.nativeLanguage || 'English';
-    const result = await analyzeAudio(userBlob, refAudioBase64, currentPhrase, nativeLang);
+    
+    // Pass sessionAttempts to analysis so AI knows history
+    const result = await analyzeAudio(
+        userBlob, 
+        refAudioBase64, 
+        currentPhrase, 
+        nativeLang, 
+        sessionAttempts
+    );
     
     setAnalysisResult(result);
+    // Add this result to the current session history
+    setSessionAttempts(prev => [...prev, result]);
+    
     setIsProcessing(false);
     setCurrentScreen(Screen.RESULT);
   };
@@ -122,6 +137,7 @@ export default function App() {
     // Clean up current state
     setCurrentUserBlob(null);
     setAnalysisResult(null);
+    setSessionAttempts([]); // Clear attempts for the new phrase
 
     // Determine next step
     if (currentPhraseIndex < phrases.length - 1) {
@@ -158,6 +174,7 @@ export default function App() {
         
         // Move to that new phrase
         setAnalysisResult(null);
+        setSessionAttempts([]); // Clear attempts
         setCurrentPhraseIndex(prev => prev + 1);
         setIsProcessing(false);
         setCurrentScreen(Screen.TRAINING);
@@ -168,8 +185,8 @@ export default function App() {
   };
 
   const handleRetry = () => {
-    // Don't save to history yet, let them retry
-    // We keep the currentUserBlob in state though, until overwritten or next
+    // Don't save to history yet, let them retry.
+    // We DO NOT clear sessionAttempts here, because we want the AI to remember this attempt.
     setCurrentScreen(Screen.TRAINING);
   };
 
@@ -193,6 +210,7 @@ export default function App() {
     // Set up a "single phrase session"
     setPhrases([phraseWithAudio]);
     setCurrentPhraseIndex(0);
+    setSessionAttempts([]); // Start fresh for practice
     setAnalysisResult(null);
     setCurrentUserBlob(null);
     setIsProcessing(false);
@@ -275,10 +293,10 @@ export default function App() {
             phrase={phrases[currentPhraseIndex]} 
             onRecordFinish={handleRecordingFinished}
             onNext={async () => {
-              // Skip logic: If skipping, do we save? 
-              // Usually skipping implies no result to save.
+              // Skip logic
               setCurrentUserBlob(null);
               setAnalysisResult(null);
+              setSessionAttempts([]);
 
               if (currentPhraseIndex < phrases.length - 1) {
                 setCurrentPhraseIndex(prev => prev + 1);
