@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnalysisResult, WordAnalysis, PhraseData } from '../types';
 import { WaveformVisualizer } from './WaveformVisualizer';
-import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X, HelpCircle, MessageCircle, Undo2, Loader2 } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X, HelpCircle, MessageCircle, Undo2, Loader2, History as HistoryIcon } from 'lucide-react';
 import { askAiCoach } from '../services/geminiService';
 
 interface Props {
@@ -11,9 +11,10 @@ interface Props {
   onRetry: () => void;
   onNext: () => void;
   onCustomPhrase: (text: string) => void;
+  onExit: () => void;
 }
 
-const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCustomPhrase }) => {
+const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCustomPhrase, onExit }) => {
   const [playingRef, setPlayingRef] = useState(false);
   const [playingUser, setPlayingUser] = useState(false);
   
@@ -111,8 +112,16 @@ const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCust
         <audio ref={userAudio} src={result.userAudioUrl} onEnded={() => setPlayingUser(false)} />
       )}
 
-      {/* Title */}
-      <h2 className="text-center md:text-left text-2xl font-bold text-white mb-8">Session Results</h2>
+      {/* Header with Title and History Button */}
+      <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-white">Session Results</h2>
+          <button 
+            onClick={onExit}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors text-sm font-medium"
+          >
+            <HistoryIcon className="w-4 h-4" /> <span className="hidden sm:inline">History</span>
+          </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
           

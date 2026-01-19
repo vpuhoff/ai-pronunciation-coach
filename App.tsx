@@ -105,7 +105,7 @@ export default function App() {
     setIsProcessing(true);
     setLoadingMessage("Analyzing Prosody...");
     
-    // Store blob temporarily in case we move to next and need to save it
+    // Store blob temporarily 
     setCurrentUserBlob(userBlob);
 
     const currentPhrase = phrases[currentPhraseIndex];
@@ -121,19 +121,19 @@ export default function App() {
     );
     
     setAnalysisResult(result);
-    // Add this result to the current session history
+    // Add this result to the current session history attempts context
     setSessionAttempts(prev => [...prev, result]);
+
+    // SAVE IMMEDIATELY HERE
+    await saveToHistory(currentPhrase, result, userBlob);
     
     setIsProcessing(false);
     setCurrentScreen(Screen.RESULT);
   };
 
   const handleNextPhrase = async () => {
-    // Save the current result to history before moving on
-    if (analysisResult) {
-      await saveToHistory(phrases[currentPhraseIndex], analysisResult, currentUserBlob);
-    }
-
+    // We do NOT save here anymore, it was saved when the result screen loaded.
+    
     // Clean up current state
     setCurrentUserBlob(null);
     setAnalysisResult(null);
@@ -152,10 +152,7 @@ export default function App() {
   const handleCustomPhraseRequest = async (input: string) => {
       if (!config) return;
       
-      // Save current result first if exists
-      if (analysisResult) {
-        await saveToHistory(phrases[currentPhraseIndex], analysisResult, currentUserBlob);
-      }
+      // We do NOT save here anymore, it was saved when the result screen loaded.
       
       setCurrentUserBlob(null);
 
@@ -315,6 +312,7 @@ export default function App() {
             onRetry={handleRetry} 
             onNext={handleNextPhrase}
             onCustomPhrase={handleCustomPhraseRequest}
+            onExit={() => setCurrentScreen(Screen.HISTORY)}
         />
       )}
     </div>
