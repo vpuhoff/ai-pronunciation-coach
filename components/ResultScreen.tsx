@@ -1,25 +1,40 @@
-import React, { useState } from 'react';
-import { AnalysisResult, WordAnalysis } from '../types';
+
+import React, { useState, useEffect } from 'react';
+import { AnalysisResult, WordAnalysis, PhraseData } from '../types';
 import { WaveformVisualizer } from './WaveformVisualizer';
-import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X, HelpCircle, MessageCircle, Undo2, Loader2 } from 'lucide-react';
+import { askAiCoach } from '../services/geminiService';
 
 interface Props {
+  phrase: PhraseData;
   result: AnalysisResult;
   onRetry: () => void;
   onNext: () => void;
   onCustomPhrase: (text: string) => void;
 }
 
-const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase }) => {
+const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCustomPhrase }) => {
   const [playingRef, setPlayingRef] = useState(false);
   const [playingUser, setPlayingUser] = useState(false);
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Custom Phrase Modal
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [customInput, setCustomInput] = useState('');
+  
+  // Q&A States
+  const [feedbackText, setFeedbackText] = useState(result.feedback);
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+  const [questionInput, setQuestionInput] = useState('');
+  const [isAsking, setIsAsking] = useState(false);
   
   // Audio elements
   const refAudio = React.useRef<HTMLAudioElement>(null);
   const userAudio = React.useRef<HTMLAudioElement>(null);
+
+  // Update local feedback if the result prop changes (e.g., after a retry)
+  useEffect(() => {
+    setFeedbackText(result.feedback);
+  }, [result.feedback]);
 
   const safePlay = async (audioEl: HTMLAudioElement, setPlaying: (v: boolean) => void) => {
     try {
@@ -65,9 +80,27 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase
       e.preventDefault();
       if(customInput.trim()) {
           onCustomPhrase(customInput.trim());
-          setIsModalOpen(false);
+          setIsCustomModalOpen(false);
       }
-  }
+  };
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!questionInput.trim()) return;
+
+      setIsAsking(true);
+      setIsQuestionModalOpen(false);
+
+      const answer = await askAiCoach(phrase.text, questionInput.trim(), result.feedback);
+      
+      setFeedbackText(answer);
+      setQuestionInput('');
+      setIsAsking(false);
+  };
+
+  const restoreFeedback = () => {
+      setFeedbackText(result.feedback);
+  };
 
   return (
     <div className="flex flex-col h-full p-6 w-full max-w-6xl mx-auto overflow-y-auto pb-32">
@@ -136,17 +169,48 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase
           {/* Right Column: Analysis & Feedback */}
           <div className="space-y-8">
              {/* AI Feedback */}
-             <div className="bg-gradient-to-br from-brand-accent/20 to-brand-primary/10 border border-brand-accent/30 p-6 rounded-3xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
+             <div className="bg-gradient-to-br from-brand-accent/20 to-brand-primary/10 border border-brand-accent/30 p-6 rounded-3xl relative overflow-hidden min-h-[200px]">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                     <Info className="w-24 h-24 text-brand-accent" />
                 </div>
-                <div className="relative z-10">
-                    <h3 className="font-bold text-brand-accent mb-2 flex items-center gap-2">
-                        <Info className="w-5 h-5" /> AI Coach Feedback
-                    </h3>
-                    <p className="text-slate-100 leading-relaxed text-lg">
-                        {result.feedback}
-                    </p>
+                
+                <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-3">
+                        <h3 className="font-bold text-brand-accent flex items-center gap-2">
+                            <Info className="w-5 h-5" /> AI Coach Feedback
+                        </h3>
+                        <div className="flex gap-2">
+                            {feedbackText !== result.feedback && (
+                                <button 
+                                    onClick={restoreFeedback}
+                                    className="p-1.5 bg-slate-900/40 hover:bg-slate-900/60 rounded-lg text-slate-300 hover:text-white transition-colors text-xs flex items-center gap-1"
+                                    title="Restore original feedback"
+                                >
+                                    <Undo2 className="w-4 h-4" /> Original
+                                </button>
+                            )}
+                            <button 
+                                onClick={() => setIsQuestionModalOpen(true)}
+                                className="p-1.5 bg-slate-900/40 hover:bg-slate-900/60 rounded-lg text-brand-accent hover:text-white transition-colors"
+                                title="Ask a question about this feedback"
+                            >
+                                <HelpCircle className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1">
+                        {isAsking ? (
+                            <div className="flex flex-col items-center justify-center h-full py-8 gap-3 text-slate-400 animate-pulse">
+                                <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
+                                <span className="text-sm">Consulting the coach...</span>
+                            </div>
+                        ) : (
+                            <p className="text-slate-100 leading-relaxed text-lg animate-in fade-in duration-500">
+                                {feedbackText}
+                            </p>
+                        )}
+                    </div>
                 </div>
              </div>
 
@@ -185,7 +249,7 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase
             </button>
             
             <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setIsCustomModalOpen(true)}
                  className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-brand-primary border border-brand-primary/30 hover:border-brand-primary rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
             >
                 <PlusCircle className="w-5 h-5" /> Custom
@@ -201,12 +265,12 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase
       </div>
 
       {/* Custom Phrase Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      {isCustomModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-800 rounded-3xl border border-slate-700 w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold text-white">Add Custom Phrase</h3>
-                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+                    <button onClick={() => setIsCustomModalOpen(false)} className="text-slate-400 hover:text-white">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -224,7 +288,7 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase
                     <div className="flex gap-3">
                         <button 
                             type="button" 
-                            onClick={() => setIsModalOpen(false)}
+                            onClick={() => setIsCustomModalOpen(false)}
                             className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition-colors"
                         >
                             Cancel
@@ -235,6 +299,50 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase
                             className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl font-bold transition-transform active:scale-95 disabled:opacity-50"
                         >
                             Generate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
+
+      {/* Ask Question Modal */}
+      {isQuestionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-800 rounded-3xl border border-slate-700 w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <MessageCircle className="w-6 h-6 text-brand-accent" /> Ask the Coach
+                    </h3>
+                    <button onClick={() => setIsQuestionModalOpen(false)} className="text-slate-400 hover:text-white">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <form onSubmit={handleQuestionSubmit}>
+                    <p className="text-slate-400 text-sm mb-3">
+                        Ask specifically about pronunciation, intonation, or how to say a difficult part of this phrase.
+                    </p>
+                    <textarea 
+                        value={questionInput}
+                        onChange={(e) => setQuestionInput(e.target.value)}
+                        placeholder="E.g., How do I position my tongue for the 'th' sound?"
+                        className="w-full h-32 bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-brand-accent outline-none resize-none mb-6"
+                        autoFocus
+                    />
+                    <div className="flex gap-3">
+                        <button 
+                            type="button" 
+                            onClick={() => setIsQuestionModalOpen(false)}
+                            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit"
+                            disabled={!questionInput.trim()}
+                            className="flex-1 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-bold transition-transform active:scale-95 disabled:opacity-50"
+                        >
+                            Ask Coach
                         </button>
                     </div>
                 </form>

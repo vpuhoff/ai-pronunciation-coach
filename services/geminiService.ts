@@ -253,6 +253,38 @@ export const generateCoachFeedback = async (
     }
 }
 
+export const askAiCoach = async (
+    phraseText: string,
+    userQuestion: string,
+    previousFeedback: string
+): Promise<string> => {
+    if (!apiKey) return "Please provide an API Key to ask questions.";
+
+    try {
+        const prompt = `
+        Context: The user is practicing the phrase: "${phraseText}".
+        The AI coach previously gave this feedback: "${previousFeedback}".
+
+        User Question: "${userQuestion}"
+
+        Instruction: Answer the user's question briefly, encouragingly, and helpfully. 
+        Act as an expert phonetics coach. 
+        If they ask about how to pronounce a specific sound in the phrase, give concrete tips (tongue position, lip shape, etc).
+        Keep the answer under 3-4 sentences.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt
+        });
+
+        return response.text || "I couldn't generate an answer.";
+    } catch (e) {
+        console.error("AI Coach Q&A Error", e);
+        return "Sorry, I am having trouble connecting to the coach right now.";
+    }
+};
+
 
 // Fallback for dev without API key
 const mockPhrases = (lang: string, topic: string): PhraseData[] => [

@@ -310,6 +310,7 @@ export default function App() {
 
       {currentScreen === Screen.RESULT && analysisResult && (
         <ResultScreen 
+            phrase={phrases[currentPhraseIndex]}
             result={analysisResult} 
             onRetry={handleRetry} 
             onNext={handleNextPhrase}
