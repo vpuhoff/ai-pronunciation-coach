@@ -1,0 +1,7 @@
+{
+  "name": "Prosody AI Trainer",
+  "description": "An AI-powered pronunciation and prosody trainer that analyzes rhythm, stress, and intonation for language learners.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
