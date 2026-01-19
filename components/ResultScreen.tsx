@@ -169,44 +169,44 @@ const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCust
           {/* Right Column: Analysis & Feedback */}
           <div className="space-y-8">
              {/* AI Feedback */}
-             <div className="bg-gradient-to-br from-brand-accent/20 to-brand-primary/10 border border-brand-accent/30 p-6 rounded-3xl relative overflow-hidden min-h-[200px]">
-                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                    <Info className="w-24 h-24 text-brand-accent" />
+             <div className="bg-gradient-to-br from-brand-accent/10 to-brand-primary/5 border border-brand-accent/20 p-4 rounded-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
+                    <Info className="w-16 h-16 text-brand-accent" />
                 </div>
                 
-                <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-3">
-                        <h3 className="font-bold text-brand-accent flex items-center gap-2">
-                            <Info className="w-5 h-5" /> AI Coach Feedback
+                <div className="relative z-10 flex flex-col">
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-brand-accent flex items-center gap-2 text-base">
+                            <Info className="w-4 h-4" /> AI Coach Feedback
                         </h3>
                         <div className="flex gap-2">
                             {feedbackText !== result.feedback && (
                                 <button 
                                     onClick={restoreFeedback}
-                                    className="p-1.5 bg-slate-900/40 hover:bg-slate-900/60 rounded-lg text-slate-300 hover:text-white transition-colors text-xs flex items-center gap-1"
+                                    className="p-1 bg-slate-900/40 hover:bg-slate-900/60 rounded text-slate-300 hover:text-white transition-colors text-xs flex items-center gap-1"
                                     title="Restore original feedback"
                                 >
-                                    <Undo2 className="w-4 h-4" /> Original
+                                    <Undo2 className="w-3 h-3" /> Original
                                 </button>
                             )}
                             <button 
                                 onClick={() => setIsQuestionModalOpen(true)}
-                                className="p-1.5 bg-slate-900/40 hover:bg-slate-900/60 rounded-lg text-brand-accent hover:text-white transition-colors"
+                                className="p-1 bg-slate-900/40 hover:bg-slate-900/60 rounded text-brand-accent hover:text-white transition-colors"
                                 title="Ask a question about this feedback"
                             >
-                                <HelpCircle className="w-5 h-5" />
+                                <HelpCircle className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                     
-                    <div className="flex-1">
+                    <div>
                         {isAsking ? (
-                            <div className="flex flex-col items-center justify-center h-full py-8 gap-3 text-slate-400 animate-pulse">
-                                <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
-                                <span className="text-sm">Consulting the coach...</span>
+                            <div className="flex flex-col items-center justify-center py-4 gap-2 text-slate-400 animate-pulse">
+                                <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
+                                <span className="text-xs">Consulting the coach...</span>
                             </div>
                         ) : (
-                            <p className="text-slate-100 leading-relaxed text-lg animate-in fade-in duration-500">
+                            <p className="text-slate-200 leading-normal text-sm animate-in fade-in duration-500">
                                 {feedbackText}
                             </p>
                         )}
