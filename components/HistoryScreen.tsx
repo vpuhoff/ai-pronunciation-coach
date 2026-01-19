@@ -1,7 +1,18 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { HistoryItem } from '../types';
-import { ArrowLeft, Download, Upload, Play, Calendar, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Play, Calendar, Star, Trash2, TrendingUp, Activity } from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area,
+  CartesianGrid
+} from 'recharts';
 
 interface Props {
   history: HistoryItem[];
@@ -14,6 +25,47 @@ interface Props {
 const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport, onClear }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- Statistics Logic ---
+  const statsData = useMemo(() => {
+    const today = new Date();
+    const data: { date: string; displayDate: string; count: number; totalScore: number; avgScore: number }[] = [];
+    const historyMap = new Map<string, { count: number; totalScore: number }>();
+
+    // 1. Group history by date (YYYY-MM-DD)
+    history.forEach(item => {
+        // Use local date string for grouping to avoid timezone shifts affecting the "day"
+        const d = new Date(item.timestamp);
+        const dateKey = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        
+        if (!historyMap.has(dateKey)) {
+            historyMap.set(dateKey, { count: 0, totalScore: 0 });
+        }
+        const entry = historyMap.get(dateKey)!;
+        entry.count += 1;
+        entry.totalScore += item.result.overallScore;
+    });
+
+    // 2. Generate last 30 days array (filling gaps with 0)
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(today.getDate() - i);
+        
+        const dateKey = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        const displayDate = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        
+        const entry = historyMap.get(dateKey);
+        
+        data.push({
+            date: dateKey,
+            displayDate,
+            count: entry ? entry.count : 0,
+            totalScore: entry ? entry.totalScore : 0,
+            avgScore: entry ? Math.round(entry.totalScore / entry.count) : 0
+        });
+    }
+    return data;
+  }, [history]);
+
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleDateString(undefined, {
       month: 'short',
@@ -24,18 +76,16 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
   };
 
   const handleExport = () => {
-    // Create a clean version of history for export
-    // Explicitly strip any audio fields if they somehow exist
     const exportData = history.map(item => ({
         ...item,
         phrase: {
             ...item.phrase,
-            audioBase64: undefined // Don't export reference audio
+            audioBase64: undefined
         },
         result: {
             ...item.result,
-            userAudioUrl: '', // Ensure empty
-            referenceAudioUrl: '', // Ensure empty
+            userAudioUrl: '',
+            referenceAudioUrl: '',
             pitchCurveReference: [],
             pitchCurveUser: []
         }
@@ -64,8 +114,25 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
     return 'text-brand-danger';
   };
 
+  // Custom Tooltip for Charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-slate-800 border border-slate-700 p-3 rounded-lg shadow-xl">
+          <p className="text-slate-300 text-sm font-medium mb-1">{label}</p>
+          {payload.map((entry: any, index: number) => (
+             <p key={index} style={{ color: entry.color }} className="text-sm font-bold">
+               {entry.name}: {entry.value}
+             </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="min-h-screen w-full max-w-5xl mx-auto p-6 flex flex-col">
+    <div className="min-h-screen w-full max-w-6xl mx-auto p-6 flex flex-col">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
@@ -75,7 +142,7 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-3xl font-bold text-white">History</h1>
+          <h1 className="text-3xl font-bold text-white">Progress & History</h1>
         </div>
 
         <div className="flex gap-3">
@@ -112,6 +179,81 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
         </div>
       </div>
 
+      {/* Analytics Charts */}
+      {history.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            {/* Chart 1: Activity */}
+            <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
+                <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-brand-primary" />
+                    <h3 className="text-slate-200 font-semibold">Activity (Phrases)</h3>
+                </div>
+                <div className="h-48 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={statsData}>
+                            <XAxis 
+                                dataKey="displayDate" 
+                                tick={{fill: '#64748b', fontSize: 10}} 
+                                axisLine={false} 
+                                tickLine={false}
+                                interval="preserveStartEnd"
+                                minTickGap={20}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{fill: '#334155', opacity: 0.2}} />
+                            <Bar 
+                                dataKey="count" 
+                                name="Phrases" 
+                                fill="#3b82f6" 
+                                radius={[4, 4, 0, 0]} 
+                                maxBarSize={40}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Chart 2: Average Score */}
+            <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
+                <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="w-5 h-5 text-brand-success" />
+                    <h3 className="text-slate-200 font-semibold">Avg. Daily Score</h3>
+                </div>
+                <div className="h-48 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={statsData}>
+                            <defs>
+                                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <XAxis 
+                                dataKey="displayDate" 
+                                tick={{fill: '#64748b', fontSize: 10}} 
+                                axisLine={false} 
+                                tickLine={false}
+                                interval="preserveStartEnd"
+                                minTickGap={20}
+                            />
+                            <YAxis hide domain={[0, 100]} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area 
+                                type="monotone" 
+                                dataKey="avgScore" 
+                                name="Avg Score" 
+                                stroke="#10b981" 
+                                fillOpacity={1} 
+                                fill="url(#colorScore)" 
+                                strokeWidth={2}
+                                connectNulls
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* List */}
       {history.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-500 space-y-4">
@@ -120,36 +262,39 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
           <p className="text-sm">Complete a session or import a file to see your progress.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 overflow-y-auto pb-20">
-          {[...history].reverse().map((item) => (
-            <div key={item.id} className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
-              
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-3 text-xs text-slate-400 mb-1">
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {formatDate(item.timestamp)}</span>
-                    <span className="bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">{item.phrase.text.match(/\((.*?)\)/)?.[1] || 'Unknown'}</span>
-                </div>
-                <h3 className="text-lg font-medium text-slate-100">{item.phrase.text}</h3>
-                <p className="text-sm text-slate-400 italic">{item.phrase.translation}</p>
-              </div>
-
-              <div className="flex items-center gap-6 justify-between md:justify-end border-t md:border-t-0 border-slate-700 pt-4 md:pt-0 mt-2 md:mt-0">
-                <div className="flex flex-col items-end min-w-[60px]">
-                    <span className={`text-2xl font-bold ${getScoreColor(item.result.overallScore)}`}>{item.result.overallScore}</span>
-                    <span className="text-xs text-slate-500 uppercase">Score</span>
-                </div>
+        <>
+            <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Recent Sessions</h3>
+            <div className="grid grid-cols-1 gap-4 overflow-y-auto pb-20">
+            {[...history].reverse().map((item) => (
+                <div key={item.id} className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                 
-                <button 
-                  onClick={() => onPractice(item)}
-                  className="flex items-center gap-2 px-4 py-3 bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white rounded-xl transition-all font-medium border border-brand-primary/30 hover:border-brand-primary"
-                >
-                  <Play className="w-4 h-4" /> Practice
-                </button>
-              </div>
+                <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mb-1">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {formatDate(item.timestamp)}</span>
+                        <span className="bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">{item.phrase.text.match(/\((.*?)\)/)?.[1] || 'Unknown'}</span>
+                    </div>
+                    <h3 className="text-lg font-medium text-slate-100">{item.phrase.text}</h3>
+                    <p className="text-sm text-slate-400 italic">{item.phrase.translation}</p>
+                </div>
 
+                <div className="flex items-center gap-6 justify-between md:justify-end border-t md:border-t-0 border-slate-700 pt-4 md:pt-0 mt-2 md:mt-0">
+                    <div className="flex flex-col items-end min-w-[60px]">
+                        <span className={`text-2xl font-bold ${getScoreColor(item.result.overallScore)}`}>{item.result.overallScore}</span>
+                        <span className="text-xs text-slate-500 uppercase">Score</span>
+                    </div>
+                    
+                    <button 
+                    onClick={() => onPractice(item)}
+                    className="flex items-center gap-2 px-4 py-3 bg-brand-primary/10 hover:bg-brand-primary text-brand-primary hover:text-white rounded-xl transition-all font-medium border border-brand-primary/30 hover:border-brand-primary"
+                    >
+                    <Play className="w-4 h-4" /> Practice
+                    </button>
+                </div>
+
+                </div>
+            ))}
             </div>
-          ))}
-        </div>
+        </>
       )}
     </div>
   );
