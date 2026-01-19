@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { HistoryItem } from '../types';
 import { ArrowLeft, Download, Upload, Play, Calendar, Star, Trash2 } from 'lucide-react';
@@ -23,12 +24,18 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
   };
 
   const handleExport = () => {
-    // Create a clean version of history for export, ensuring no pitch curve data is included
-    // (This handles legacy history items that might still have it)
+    // Create a clean version of history for export
+    // Explicitly strip any audio fields if they somehow exist
     const exportData = history.map(item => ({
         ...item,
+        phrase: {
+            ...item.phrase,
+            audioBase64: undefined // Don't export reference audio
+        },
         result: {
             ...item.result,
+            userAudioUrl: '', // Ensure empty
+            referenceAudioUrl: '', // Ensure empty
             pitchCurveReference: [],
             pitchCurveUser: []
         }
@@ -95,7 +102,7 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
           {history.length > 0 && (
              <button 
              onClick={() => {
-                 if(confirm('Are you sure you want to clear all history?')) onClear();
+                 if(confirm('Are you sure you want to clear all history? This will also delete saved recordings.')) onClear();
              }}
              className="flex items-center gap-2 px-4 py-2 bg-rose-900/20 hover:bg-rose-900/40 text-rose-400 rounded-lg border border-rose-900/30 transition-colors text-sm font-medium"
            >

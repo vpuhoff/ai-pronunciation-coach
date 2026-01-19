@@ -50,8 +50,8 @@ export interface AnalysisResult {
   overallScore: number;
   words: WordAnalysis[];
   feedback: string;
-  userAudioUrl: string;
-  referenceAudioUrl?: string;
+  userAudioUrl: string; // Can be empty string in history
+  referenceAudioUrl?: string; // Can be empty string in history
   // Real data for visualization
   pitchCurveReference: { time: number; value: number }[];
   pitchCurveUser: { time: number; value: number }[];

@@ -7,6 +7,7 @@ import ResultScreen from './components/ResultScreen';
 import HistoryScreen from './components/HistoryScreen';
 import { generateTrainingContent, generateCustomPhrase } from './services/geminiService';
 import { analyzeAudio } from './services/audioUtils';
+import { saveAudioSession, getAudioSession, clearAudioStorage } from './services/storageService';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -17,6 +18,10 @@ export default function App() {
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  
+  // Temporary holding for the blob until we save to history or discard
+  const [currentUserBlob, setCurrentUserBlob] = useState<Blob | null>(null);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
 
@@ -36,21 +41,40 @@ export default function App() {
     localStorage.setItem('prosody_history', JSON.stringify(history));
   }, [history]);
 
-  const saveToHistory = (phrase: PhraseData, result: AnalysisResult) => {
-    // We remove heavy pitch curve data as it's not needed for history listing
-    // and takes up significant storage space.
+  const saveToHistory = async (phrase: PhraseData, result: AnalysisResult, userBlob: Blob | null) => {
+    const historyId = crypto.randomUUID();
+
+    // 1. Clean up result for localStorage (Remove URLs and heavy curves)
     const lightweightResult: AnalysisResult = {
       ...result,
-      pitchCurveReference: [],
+      userAudioUrl: '', // Do not store ephemeral blob URLs
+      referenceAudioUrl: '', // Do not store data URIs in local storage (too big)
+      pitchCurveReference: [], // Can be re-calculated or omitted for history list
       pitchCurveUser: []
     };
 
+    // 2. Prepare reference audio data (base64)
+    // We try to extract the base64 from the phrase data or the result URL if it was a data URI
+    let refBase64: string | undefined = phrase.audioBase64;
+    if (!refBase64 && result.referenceAudioUrl && result.referenceAudioUrl.startsWith('data:')) {
+        refBase64 = result.referenceAudioUrl; // It's already a data URI
+    }
+
+    // 3. Save binary data to IndexedDB
+    try {
+        await saveAudioSession(historyId, userBlob, refBase64);
+    } catch (e) {
+        console.error("Failed to save audio to IDB", e);
+    }
+
+    // 4. Save metadata to State/LocalStorage
     const newItem: HistoryItem = {
-      id: crypto.randomUUID(),
+      id: historyId,
       timestamp: Date.now(),
       phrase: phrase,
       result: lightweightResult
     };
+    
     setHistory(prev => [...prev, newItem]);
   };
 
@@ -77,9 +101,10 @@ export default function App() {
     setIsProcessing(true);
     setLoadingMessage("Analyzing Prosody...");
     
+    // Store blob temporarily in case we move to next and need to save it
+    setCurrentUserBlob(userBlob);
+
     const currentPhrase = phrases[currentPhraseIndex];
-    // Perform simulated DSP analysis + Gemini Feedback
-    // Default to 'English' if for some reason config is missing, but it shouldn't be.
     const nativeLang = config?.nativeLanguage || 'English';
     const result = await analyzeAudio(userBlob, refAudioBase64, currentPhrase, nativeLang);
     
@@ -88,15 +113,18 @@ export default function App() {
     setCurrentScreen(Screen.RESULT);
   };
 
-  const handleNextPhrase = () => {
+  const handleNextPhrase = async () => {
     // Save the current result to history before moving on
     if (analysisResult) {
-      saveToHistory(phrases[currentPhraseIndex], analysisResult);
+      await saveToHistory(phrases[currentPhraseIndex], analysisResult, currentUserBlob);
     }
+
+    // Clean up current state
+    setCurrentUserBlob(null);
+    setAnalysisResult(null);
 
     // Determine next step
     if (currentPhraseIndex < phrases.length - 1) {
-        setAnalysisResult(null); // Clear previous result
         setCurrentPhraseIndex(prev => prev + 1);
         setCurrentScreen(Screen.TRAINING);
     } else {
@@ -108,10 +136,12 @@ export default function App() {
   const handleCustomPhraseRequest = async (input: string) => {
       if (!config) return;
       
-      // Save current result first
+      // Save current result first if exists
       if (analysisResult) {
-        saveToHistory(phrases[currentPhraseIndex], analysisResult);
+        await saveToHistory(phrases[currentPhraseIndex], analysisResult, currentUserBlob);
       }
+      
+      setCurrentUserBlob(null);
 
       setIsProcessing(true);
       setLoadingMessage("Creating custom lesson...");
@@ -139,16 +169,33 @@ export default function App() {
 
   const handleRetry = () => {
     // Don't save to history yet, let them retry
+    // We keep the currentUserBlob in state though, until overwritten or next
     setCurrentScreen(Screen.TRAINING);
   };
 
   // --- History Handlers ---
 
-  const handleHistoryPractice = (item: HistoryItem) => {
+  const handleHistoryPractice = async (item: HistoryItem) => {
+    setIsProcessing(true);
+    setLoadingMessage("Loading session...");
+
+    // Try to recover reference audio from IndexedDB to avoid re-generation
+    let phraseWithAudio = { ...item.phrase };
+    try {
+        const audioRecord = await getAudioSession(item.id);
+        if (audioRecord && audioRecord.referenceBase64) {
+            phraseWithAudio.audioBase64 = audioRecord.referenceBase64;
+        }
+    } catch (e) {
+        console.warn("Could not load audio from history DB", e);
+    }
+
     // Set up a "single phrase session"
-    setPhrases([item.phrase]);
+    setPhrases([phraseWithAudio]);
     setCurrentPhraseIndex(0);
     setAnalysisResult(null);
+    setCurrentUserBlob(null);
+    setIsProcessing(false);
     setCurrentScreen(Screen.TRAINING);
   };
 
@@ -159,20 +206,38 @@ export default function App() {
         const content = e.target?.result as string;
         const importedHistory = JSON.parse(content);
         if (Array.isArray(importedHistory)) {
-          // Merge or replace? Let's merge for now, avoiding duplicates by ID
+          // Filter out items that already exist to avoid duplicates
           setHistory(prev => {
              const existingIds = new Set(prev.map(i => i.id));
-             // Ensure imported items also don't carry heavy data if possible
-             const newItems = importedHistory.filter((i: HistoryItem) => !existingIds.has(i.id));
+             // Ensure imported items don't have heavy data attached just in case
+             const newItems = importedHistory.filter((i: HistoryItem) => !existingIds.has(i.id)).map((i: any) => ({
+                 ...i,
+                 result: {
+                     ...i.result,
+                     userAudioUrl: '',
+                     referenceAudioUrl: '',
+                     pitchCurveReference: [],
+                     pitchCurveUser: []
+                 }
+             }));
              return [...prev, ...newItems];
           });
-          alert(`Imported ${importedHistory.length} items successfully.`);
+          alert(`Imported ${importedHistory.length} items successfully (Audio not included in import).`);
         }
       } catch (err) {
         alert("Failed to parse history file.");
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleClearHistory = async () => {
+      setHistory([]);
+      try {
+          await clearAudioStorage();
+      } catch (e) {
+          console.error("Failed to clear audio DB", e);
+      }
   };
 
   return (
@@ -201,7 +266,7 @@ export default function App() {
           onBack={() => setCurrentScreen(Screen.SETUP)}
           onPractice={handleHistoryPractice}
           onImport={handleImportHistory}
-          onClear={() => setHistory([])}
+          onClear={handleClearHistory}
         />
       )}
 
@@ -209,11 +274,13 @@ export default function App() {
         <TrainingScreen 
             phrase={phrases[currentPhraseIndex]} 
             onRecordFinish={handleRecordingFinished}
-            onNext={() => {
-              // Skip logic: if skipping, we might not want to save a result (since there is none),
-              // but we need to move index.
+            onNext={async () => {
+              // Skip logic: If skipping, do we save? 
+              // Usually skipping implies no result to save.
+              setCurrentUserBlob(null);
+              setAnalysisResult(null);
+
               if (currentPhraseIndex < phrases.length - 1) {
-                setAnalysisResult(null);
                 setCurrentPhraseIndex(prev => prev + 1);
               } else {
                 setCurrentScreen(Screen.HISTORY);

@@ -74,16 +74,23 @@ export const generateCustomPhrase = async (
 
     try {
         const prompt = `
-          The user wants to practice a specific phrase or concept.
+          The user wants to practice a specific phrase for speech therapy (anomia recovery).
+          The goal is to generate ONE natural, spoken-English phrase that is easy to initiate.
+
           User Input: "${userInput}"
           Target Language: ${targetLang}
           Native Language: ${nativeLang}
 
           Instructions:
-          1. If the input is in ${nativeLang}, translate it naturally to ${targetLang}.
-          2. If the input is in ${targetLang}, correct any grammar mistakes if necessary.
-          3. Identify the logical stress focus.
-          4. Provide the translation in ${nativeLang}.
+          1. **Translate & Adapt:** Translate the input to ${targetLang}. If the input is already in ${targetLang}, refine it.
+          2. **Add "Cognitive Ramps" (Fillers):**
+             - Insert natural discourse markers (e.g., "Actually," "Well," "To be honest," "Basically," "You know," "I mean") at the beginning of the sentence or before the complex keyword.
+             - *Reason:* These words act as a motor starter to help the user overcome speech blocks before hitting the main concept.
+          3. **Optimize for Flow:**
+             - Avoid overly dense cluster of consonants.
+             - If a specific technical term is too complex, use a slightly more general professional synonym (e.g., use "handle" instead of "facilitate" if appropriate), unless the user specifically asks for the hard term.
+          4. Identify the main logical stress focus (usually the core noun or verb).
+          5. Provide the translation in ${nativeLang}.
         `;
 
         const response = await ai.models.generateContent({
@@ -94,7 +101,7 @@ export const generateCustomPhrase = async (
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        text: { type: Type.STRING, description: "The final phrase in target language" },
+                        text: { type: Type.STRING, description: "The final phrase with cognitive ramps/fillers included" },
                         translation: { type: Type.STRING, description: "Translation in native language" },
                         stressFocus: { type: Type.STRING, description: "The focused word" }
                     },
