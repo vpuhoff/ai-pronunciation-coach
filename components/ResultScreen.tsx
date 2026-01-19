@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { AnalysisResult, WordAnalysis } from '../types';
 import { WaveformVisualizer } from './WaveformVisualizer';
-import { RefreshCw, ArrowRight, Play, Info } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X } from 'lucide-react';
 
 interface Props {
   result: AnalysisResult;
   onRetry: () => void;
   onNext: () => void;
+  onCustomPhrase: (text: string) => void;
 }
 
-const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext }) => {
+const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext, onCustomPhrase }) => {
   const [playingRef, setPlayingRef] = useState(false);
   const [playingUser, setPlayingUser] = useState(false);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customInput, setCustomInput] = useState('');
   
   // Audio elements
   const refAudio = React.useRef<HTMLAudioElement>(null);
@@ -56,6 +60,14 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext }) => {
     if (issue === 'pause') return <span className="text-[10px] uppercase tracking-tighter bg-blue-500/20 text-blue-300 px-1 rounded ml-1">Rhythm</span>;
     return <span className="text-[10px] uppercase tracking-tighter bg-red-500/20 text-red-300 px-1 rounded ml-1">Pronun.</span>;
   };
+
+  const handleCustomSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(customInput.trim()) {
+          onCustomPhrase(customInput.trim());
+          setIsModalOpen(false);
+      }
+  }
 
   return (
     <div className="flex flex-col h-full p-6 w-full max-w-6xl mx-auto overflow-y-auto pb-32">
@@ -164,13 +176,21 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext }) => {
 
       {/* Sticky Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-brand-dark via-brand-dark/95 to-transparent z-40">
-        <div className="flex gap-4 max-w-4xl mx-auto">
+        <div className="flex gap-4 max-w-4xl mx-auto items-stretch">
             <button 
                 onClick={onRetry}
                 className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
             >
                 <RefreshCw className="w-5 h-5" /> Retry
             </button>
+            
+            <button
+                onClick={() => setIsModalOpen(true)}
+                 className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-brand-primary border border-brand-primary/30 hover:border-brand-primary rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
+            >
+                <PlusCircle className="w-5 h-5" /> Custom
+            </button>
+
             <button 
                 onClick={onNext}
                 className="flex-[2] py-4 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand-primary/25 transition-transform active:scale-95"
@@ -179,6 +199,48 @@ const ResultScreen: React.FC<Props> = ({ result, onRetry, onNext }) => {
             </button>
         </div>
       </div>
+
+      {/* Custom Phrase Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-slate-800 rounded-3xl border border-slate-700 w-full max-w-md p-6 shadow-2xl transform transition-all scale-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-white">Add Custom Phrase</h3>
+                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <form onSubmit={handleCustomSubmit}>
+                    <p className="text-slate-400 text-sm mb-3">
+                        Enter a phrase in your native or target language. The AI will translate it and prepare a lesson.
+                    </p>
+                    <textarea 
+                        value={customInput}
+                        onChange={(e) => setCustomInput(e.target.value)}
+                        placeholder="E.g., I would like to order a beer..."
+                        className="w-full h-32 bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-brand-primary outline-none resize-none mb-6"
+                        autoFocus
+                    />
+                    <div className="flex gap-3">
+                        <button 
+                            type="button" 
+                            onClick={() => setIsModalOpen(false)}
+                            className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit"
+                            disabled={!customInput.trim()}
+                            className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl font-bold transition-transform active:scale-95 disabled:opacity-50"
+                        >
+                            Generate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
 
     </div>
   );

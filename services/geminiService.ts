@@ -65,6 +65,59 @@ export const generateTrainingContent = async (
   }
 };
 
+export const generateCustomPhrase = async (
+    userInput: string,
+    targetLang: Language,
+    nativeLang: Language
+): Promise<PhraseData | null> => {
+    if (!apiKey) return null;
+
+    try {
+        const prompt = `
+          The user wants to practice a specific phrase or concept.
+          User Input: "${userInput}"
+          Target Language: ${targetLang}
+          Native Language: ${nativeLang}
+
+          Instructions:
+          1. If the input is in ${nativeLang}, translate it naturally to ${targetLang}.
+          2. If the input is in ${targetLang}, correct any grammar mistakes if necessary.
+          3. Identify the logical stress focus.
+          4. Provide the translation in ${nativeLang}.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        text: { type: Type.STRING, description: "The final phrase in target language" },
+                        translation: { type: Type.STRING, description: "Translation in native language" },
+                        stressFocus: { type: Type.STRING, description: "The focused word" }
+                    },
+                    required: ["text", "translation", "stressFocus"]
+                }
+            }
+        });
+
+        const item = JSON.parse(response.text || "{}");
+        if (!item.text) return null;
+
+        return {
+            id: `custom-${Date.now()}`,
+            text: item.text,
+            translation: item.translation,
+            stressFocus: item.stressFocus
+        };
+    } catch (e) {
+        console.error("Custom phrase generation error", e);
+        return null;
+    }
+};
+
 export const generateReferenceAudio = async (text: string, voiceName: string = 'Kore'): Promise<string | undefined> => {
     if (!apiKey) return undefined;
 

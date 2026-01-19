@@ -5,7 +5,7 @@ import SetupScreen from './components/SetupScreen';
 import TrainingScreen from './components/TrainingScreen';
 import ResultScreen from './components/ResultScreen';
 import HistoryScreen from './components/HistoryScreen';
-import { generateTrainingContent } from './services/geminiService';
+import { generateTrainingContent, generateCustomPhrase } from './services/geminiService';
 import { analyzeAudio } from './services/audioUtils';
 import { Loader2 } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export default function App() {
   
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   // History State
   const [history, setHistory] = useState<HistoryItem[]>(() => {
@@ -55,6 +56,7 @@ export default function App() {
 
   const startSession = async (newConfig: SessionConfig) => {
     setIsProcessing(true);
+    setLoadingMessage("Designing your lesson...");
     setConfig(newConfig);
     
     // Generate content via Gemini
@@ -73,6 +75,7 @@ export default function App() {
 
   const handleRecordingFinished = async (userBlob: Blob, refAudioBase64: string | undefined) => {
     setIsProcessing(true);
+    setLoadingMessage("Analyzing Prosody...");
     
     const currentPhrase = phrases[currentPhraseIndex];
     // Perform simulated DSP analysis + Gemini Feedback
@@ -100,6 +103,38 @@ export default function App() {
         // End of session
         setCurrentScreen(Screen.HISTORY);
     }
+  };
+
+  const handleCustomPhraseRequest = async (input: string) => {
+      if (!config) return;
+      
+      // Save current result first
+      if (analysisResult) {
+        saveToHistory(phrases[currentPhraseIndex], analysisResult);
+      }
+
+      setIsProcessing(true);
+      setLoadingMessage("Creating custom lesson...");
+
+      const newPhrase = await generateCustomPhrase(input, config.targetLanguage, config.nativeLanguage);
+      
+      if (newPhrase) {
+        // Insert the new phrase after the current one
+        setPhrases(prev => {
+            const next = [...prev];
+            next.splice(currentPhraseIndex + 1, 0, newPhrase);
+            return next;
+        });
+        
+        // Move to that new phrase
+        setAnalysisResult(null);
+        setCurrentPhraseIndex(prev => prev + 1);
+        setIsProcessing(false);
+        setCurrentScreen(Screen.TRAINING);
+      } else {
+        setIsProcessing(false);
+        alert("Failed to generate phrase. Please try again.");
+      }
   };
 
   const handleRetry = () => {
@@ -147,7 +182,7 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-brand-dark/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
             <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />
             <p className="text-slate-300 font-medium animate-pulse">
-                {currentScreen === Screen.SETUP ? "Designing your lesson..." : "Analyzing Prosody..."}
+                {loadingMessage || "Processing..."}
             </p>
         </div>
       )}
@@ -192,7 +227,8 @@ export default function App() {
         <ResultScreen 
             result={analysisResult} 
             onRetry={handleRetry} 
-            onNext={handleNextPhrase} 
+            onNext={handleNextPhrase}
+            onCustomPhrase={handleCustomPhraseRequest}
         />
       )}
     </div>
