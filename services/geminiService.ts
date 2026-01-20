@@ -19,16 +19,21 @@ export const generateTrainingContent = async (
 
   try {
     const prompt = `
-      Generate 3 unique, distinct, and conversational phrases for a language learner.
+      Generate 3 unique, distinct, and conversational phrases for a language learner practicing speech therapy or fluency.
       Target Language: ${targetLang}
       Native Language: ${nativeLang}
       Topic: ${topic}
       Level: ${difficulty}
       
       Instructions:
-      1. Create natural-sounding phrases that fit the context.
-      2. Avoid generic textbook examples or repetitive structures.
-      3. For each phrase, identify the specific word or segment that requires logical stress (prosody focus).
+      1. **Context & Naturalness:** Create natural-sounding phrases that fit the topic. Avoid generic textbook examples.
+      2. **Add "Cognitive Ramps" (Fillers):**
+         - Insert natural discourse markers (e.g., "Actually," "Well," "To be honest," "Basically," "You know," "I mean") at the beginning of the sentences or before complex keywords.
+         - *Reason:* These words act as a motor starter to help the user overcome speech blocks or anxiety before hitting the main concept.
+      3. **Optimize for Flow:**
+         - Avoid overly dense cluster of consonants.
+         - If a specific term is too complex phonetically, use a slightly more general synonym unless essential for the topic.
+      4. Identify the specific word or segment that requires logical stress (prosody focus) for each phrase.
     `;
 
     const response = await ai.models.generateContent({
@@ -41,7 +46,7 @@ export const generateTrainingContent = async (
           items: {
             type: Type.OBJECT,
             properties: {
-              text: { type: Type.STRING, description: "The phrase in target language" },
+              text: { type: Type.STRING, description: "The phrase in target language with fillers included" },
               translation: { type: Type.STRING, description: "Translation in native language" },
               stressFocus: { type: Type.STRING, description: "The specific word that carries the main logical stress or intonation peak" }
             },
