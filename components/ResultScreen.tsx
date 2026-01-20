@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnalysisResult, WordAnalysis, PhraseData } from '../types';
 import { WaveformVisualizer } from './WaveformVisualizer';
-import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X, HelpCircle, MessageCircle, Undo2, Loader2, History as HistoryIcon } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, Info, PlusCircle, X, HelpCircle, MessageCircle, Undo2, Loader2, History as HistoryIcon, Activity, Mic2, Wind, Award } from 'lucide-react';
 import { askAiCoach } from '../services/geminiService';
 
 interface Props {
@@ -13,6 +13,32 @@ interface Props {
   onCustomPhrase: (text: string) => void;
   onExit: () => void;
 }
+
+// Helper component for mini progress bars
+const MetricBar = ({ label, value, colorClass }: { label: string, value: number, colorClass: string }) => (
+    <div className="flex flex-col gap-1 w-full">
+        <div className="flex justify-between items-end text-xs">
+            <span className="text-slate-400 font-medium">{label}</span>
+            <span className={`font-bold ${colorClass.replace('bg-', 'text-')}`}>{value}</span>
+        </div>
+        <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+            <div 
+                className={`h-full rounded-full ${colorClass} transition-all duration-1000 ease-out`} 
+                style={{ width: `${value}%` }}
+            />
+        </div>
+    </div>
+);
+
+// Helper for enum badges
+const EnumBadge = ({ label, value, colorClass }: { label: string, value: string, colorClass: string }) => (
+    <div className="flex flex-col gap-1 w-full">
+         <span className="text-xs text-slate-400 font-medium">{label}</span>
+         <span className={`px-2 py-1 rounded-md text-xs font-bold border ${colorClass} text-center`}>
+            {value}
+         </span>
+    </div>
+);
 
 const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCustomPhrase, onExit }) => {
   const [playingRef, setPlayingRef] = useState(false);
@@ -77,6 +103,25 @@ const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCust
     return <span className="text-[10px] uppercase tracking-tighter bg-red-500/20 text-red-300 px-1 rounded ml-1">Pronun.</span>;
   };
 
+  // --- Dynamic Color Helpers ---
+  const getSpeedColor = (val: string) => {
+    if (val === 'Natural') return 'border-brand-success/30 text-brand-success bg-brand-success/10';
+    return 'border-brand-warning/30 text-brand-warning bg-brand-warning/10';
+  }
+
+  const getHesitationColor = (val: string) => {
+    if (val === 'None') return 'border-brand-success/30 text-brand-success bg-brand-success/10';
+    if (val === 'Few') return 'border-brand-warning/30 text-brand-warning bg-brand-warning/10';
+    return 'border-brand-danger/30 text-brand-danger bg-brand-danger/10';
+  }
+
+  const getAccentColor = (val: string) => {
+    if (['Native-like', 'Mild'].includes(val)) return 'border-brand-success/30 text-brand-success bg-brand-success/10';
+    if (val === 'Moderate') return 'border-brand-warning/30 text-brand-warning bg-brand-warning/10';
+    return 'border-brand-danger/30 text-brand-danger bg-brand-danger/10';
+  }
+  // -----------------------------
+
   const handleCustomSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if(customInput.trim()) {
@@ -123,7 +168,7 @@ const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCust
           </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           
           {/* Left Column: Metrics & Audio */}
           <div className="space-y-8">
@@ -176,7 +221,7 @@ const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCust
           </div>
 
           {/* Right Column: Analysis & Feedback */}
-          <div className="space-y-8">
+          <div className="space-y-6">
              {/* AI Feedback */}
              <div className="bg-gradient-to-br from-brand-accent/10 to-brand-primary/5 border border-brand-accent/20 p-4 rounded-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
@@ -222,6 +267,70 @@ const ResultScreen: React.FC<Props> = ({ phrase, result, onRetry, onNext, onCust
                     </div>
                 </div>
              </div>
+
+             {/* Detailed Deep Analysis Grid */}
+             {result.detailedScore && (
+                 <div className="bg-slate-800/40 p-5 rounded-3xl border border-slate-700">
+                     <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                         <Activity className="w-4 h-4" /> Deep Analysis
+                     </h3>
+                     
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                         
+                         {/* Articulation */}
+                         <div className="space-y-3">
+                             <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase">
+                                 <Mic2 className="w-3 h-3" /> Articulation
+                             </div>
+                             <MetricBar label="Phoneme Accuracy" value={result.detailedScore.articulation.phonemeAccuracy} colorClass="bg-cyan-500" />
+                             <MetricBar label="Completeness" value={result.detailedScore.articulation.completeness} colorClass="bg-cyan-500" />
+                         </div>
+
+                         {/* Prosody */}
+                         <div className="space-y-3">
+                             <div className="flex items-center gap-2 text-violet-400 text-xs font-bold uppercase">
+                                 <Activity className="w-3 h-3" /> Prosody
+                             </div>
+                             <MetricBar label="Intonation" value={result.detailedScore.prosody.intonation} colorClass="bg-violet-500" />
+                             <MetricBar label="Stress" value={result.detailedScore.prosody.stress} colorClass="bg-violet-500" />
+                             <MetricBar label="Rhythm" value={result.detailedScore.prosody.rhythm} colorClass="bg-violet-500" />
+                         </div>
+
+                         {/* Fluency */}
+                         <div className="space-y-3">
+                             <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase">
+                                 <Wind className="w-3 h-3" /> Fluency
+                             </div>
+                             <MetricBar label="Smoothness" value={result.detailedScore.fluency.smoothness} colorClass="bg-amber-500" />
+                             <div className="grid grid-cols-2 gap-2">
+                                <EnumBadge 
+                                    label="Speed" 
+                                    value={result.detailedScore.fluency.speed} 
+                                    colorClass={getSpeedColor(result.detailedScore.fluency.speed)} 
+                                />
+                                <EnumBadge 
+                                    label="Hesitations" 
+                                    value={result.detailedScore.fluency.hesitations} 
+                                    colorClass={getHesitationColor(result.detailedScore.fluency.hesitations)} 
+                                />
+                             </div>
+                         </div>
+
+                         {/* Impression */}
+                         <div className="space-y-3">
+                             <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase">
+                                 <Award className="w-3 h-3" /> Impression
+                             </div>
+                             <MetricBar label="Confidence" value={result.detailedScore.impression.confidence} colorClass="bg-emerald-500" />
+                             <EnumBadge 
+                                label="Accent" 
+                                value={result.detailedScore.impression.accent} 
+                                colorClass={getAccentColor(result.detailedScore.impression.accent)} 
+                             />
+                         </div>
+                     </div>
+                 </div>
+             )}
 
              {/* Detailed Word Feedback */}
              <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700">

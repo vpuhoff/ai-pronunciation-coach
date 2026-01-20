@@ -162,14 +162,20 @@ export const generateCoachFeedback = async (
     userAudioBase64: string,
     nativeLanguage: string,
     previousAttempts: AnalysisResult[] = []
-): Promise<{ overallScore: number, feedback: string, words: WordAnalysis[] }> => {
+): Promise<{ overallScore: number, feedback: string, words: WordAnalysis[], detailedScore?: any }> => {
     
     // Default fallback if no API key
     if(!apiKey) {
         return {
             overallScore: 75,
-            feedback: "Simulated Feedback (No API Key): Good attempt, try to focus on the rhythm.",
-            words: originalText.split(' ').map(w => ({ word: w, score: 80, status: 'perfect' }))
+            feedback: "Simulated Feedback (No API Key): Good attempt. Your intonation was mostly flat, try to add more energy.",
+            words: originalText.split(' ').map(w => ({ word: w, score: 80, status: 'perfect' })),
+            detailedScore: {
+                articulation: { phonemeAccuracy: 80, completeness: 90 },
+                prosody: { intonation: 60, rhythm: 70, stress: 75 },
+                fluency: { speed: 'Natural', hesitations: 'Few', smoothness: 80 },
+                impression: { confidence: 70, accent: 'Moderate' }
+            }
         };
     }
 
@@ -202,6 +208,11 @@ export const generateCoachFeedback = async (
         1. Give an overall pronunciation score (0-100).
         2. Analyze each word. If a word is mispronounced, mark status as 'error'. If intonation/stress is off, 'warning'. Otherwise 'perfect'.
         3. Provide helpful feedback in ${nativeLanguage} (2 sentences max). Address the user directly ("You...").
+        4. Provide a detailed breakdown of metrics:
+           - Articulation: Phoneme Accuracy (0-100), Completeness (0-100).
+           - Prosody: Intonation (0-100), Rhythm (0-100), Stress Accuracy (0-100).
+           - Fluency: Speed (Too Slow/Natural/Fast), Hesitations (None/Few/Many), Smoothness (0-100).
+           - Impression: Confidence (0-100), Accent Strength (Native-like/Mild/Moderate/Heavy).
         `;
 
         const response = await ai.models.generateContent({
@@ -236,9 +247,49 @@ export const generateCoachFeedback = async (
                                 },
                                 required: ["word", "score", "status"]
                             }
+                        },
+                        detailedScore: {
+                            type: Type.OBJECT,
+                            properties: {
+                                articulation: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        phonemeAccuracy: { type: Type.INTEGER },
+                                        completeness: { type: Type.INTEGER }
+                                    },
+                                    required: ["phonemeAccuracy", "completeness"]
+                                },
+                                prosody: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        intonation: { type: Type.INTEGER },
+                                        rhythm: { type: Type.INTEGER },
+                                        stress: { type: Type.INTEGER }
+                                    },
+                                    required: ["intonation", "rhythm", "stress"]
+                                },
+                                fluency: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        speed: { type: Type.STRING, enum: ["Too Slow", "Natural", "Fast"] },
+                                        hesitations: { type: Type.STRING, enum: ["None", "Few", "Many"] },
+                                        smoothness: { type: Type.INTEGER }
+                                    },
+                                    required: ["speed", "hesitations", "smoothness"]
+                                },
+                                impression: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        confidence: { type: Type.INTEGER },
+                                        accent: { type: Type.STRING, enum: ["Native-like", "Mild", "Moderate", "Heavy"] }
+                                    },
+                                    required: ["confidence", "accent"]
+                                }
+                            },
+                            required: ["articulation", "prosody", "fluency", "impression"]
                         }
                     },
-                    required: ["overallScore", "feedback", "words"]
+                    required: ["overallScore", "feedback", "words", "detailedScore"]
                 }
             }
         });
@@ -247,7 +298,8 @@ export const generateCoachFeedback = async (
         return {
             overallScore: result.overallScore || 0,
             feedback: result.feedback || "Could not analyze audio.",
-            words: result.words || []
+            words: result.words || [],
+            detailedScore: result.detailedScore
         };
 
     } catch (e) {

@@ -47,8 +47,30 @@ export interface WordAnalysis {
   end?: number;
 }
 
+export interface DetailedAnalysis {
+  articulation: {
+    phonemeAccuracy: number; // 0-100
+    completeness: number; // 0-100
+  };
+  prosody: {
+    intonation: number; // 0-100
+    rhythm: number; // 0-100
+    stress: number; // 0-100
+  };
+  fluency: {
+    speed: 'Too Slow' | 'Natural' | 'Fast';
+    hesitations: 'None' | 'Few' | 'Many';
+    smoothness: number; // 0-100
+  };
+  impression: {
+    confidence: number; // 0-100
+    accent: 'Native-like' | 'Mild' | 'Moderate' | 'Heavy';
+  };
+}
+
 export interface AnalysisResult {
   overallScore: number;
+  detailedScore?: DetailedAnalysis; // Optional for backward compatibility
   words: WordAnalysis[];
   feedback: string;
   userAudioUrl: string; // Can be empty string in history
