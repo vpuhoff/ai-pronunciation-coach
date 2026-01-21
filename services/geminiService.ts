@@ -28,7 +28,7 @@ export const generateTrainingContent = async (
       Instructions:
       1. **Context & Naturalness:** Create natural-sounding phrases that fit the topic. Avoid generic textbook examples.
       2. **Add "Cognitive Ramps" (Fillers):**
-         - Insert natural discourse markers (e.g., "Actually," "Well," "To be honest," "Basically," "You know," "I mean") at the beginning of the sentences or before complex keywords.
+         - Insert natural discourse markers (e.g., "Actually," "Well," "To be honest," "Basically," "I mean") at the beginning of the sentences or before complex keywords.
          - *Reason:* These words act as a motor starter to help the user overcome speech blocks or anxiety before hitting the main concept.
       3. **Optimize for Flow:**
          - Avoid overly dense cluster of consonants.
@@ -90,7 +90,7 @@ export const generateCustomPhrase = async (
           Instructions:
           1. **Translate & Adapt:** Translate the input to ${targetLang}. If the input is already in ${targetLang}, refine it.
           2. **Add "Cognitive Ramps" (Fillers):**
-             - Insert natural discourse markers (e.g., "Actually," "Well," "To be honest," "Basically," "You know," "I mean") at the beginning of the sentence or before the complex keyword.
+             - Insert natural discourse markers (e.g., "Actually," "Well," "To be honest," "Basically," "I mean") at the beginning of the sentence or before the complex keyword.
              - *Reason:* These words act as a motor starter to help the user overcome speech blocks before hitting the main concept.
           3. **Optimize for Flow:**
              - Avoid overly dense cluster of consonants.
