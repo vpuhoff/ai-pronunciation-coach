@@ -116,6 +116,24 @@ Unlike standard language apps that only check if you said the correct word, this
 
 ---
 
+## 🔭 Planned improvements
+
+Future work to scale the codebase and ship a safer, more maintainable product:
+
+*   **`App.tsx` complexity (state & navigation):** Today `App.tsx` centralizes a lot of UI state (screens, phrases, blobs, history, loading) and hand-rolls transitions between Setup, Training, Results, and History. For growth, extract state with **React Context**, **Zustand**, or **Redux Toolkit** (not in dependencies yet—add only if the team wants that model), and move screen changes to **`react-router-dom`** so routes, URLs, and deep-linking stay predictable.
+*   **Testing:** There are currently **no automated tests**—neither **unit** tests (e.g. for DSP helpers in `services/audioUtils.ts`) nor **e2e** flows (record → analyze → history). Adding Vitest/Jest + Playwright (or Cypress) would protect regressions in audio and AI flows.
+*   **API key handling (production B2C):** Users paste **Gemini** and **ElevenLabs** keys; values live in **`localStorage`**, which is fine for demos and power users. A real consumer product usually needs a **BFF (Backend for Frontend)** or similar proxy so secrets never ship to untrusted clients and quotas can be enforced server-side.
+*   **Internationalization (i18n):** Lesson languages are configurable, but **UI copy** (buttons, headings, errors) is **English-only**. Adding i18n (e.g. `react-i18next`) would align the shell with multilingual learners.
+*   **Media permission UX:** `TrainingScreen` still falls back to a plain **`alert()`** when the microphone is denied. A dedicated inline banner or modal with steps to fix browser permissions would feel closer to production polish.
+
+### Roadmap summary
+
+The project already shows solid use of **React**, **Web Audio**, **MediaRecorder**, **IndexedDB**, and **LLM** integration. Tackling the items above—especially **routing**, **shared state**, **tests**, and **server-side API access**—is the natural path from a strong local demo toward a **market-ready B2C** release.
+
+**Review snapshot (directional, not a guarantee):** the current frontend depth—including non-trivial browser APIs and multimodal AI wiring—has been informally rated around **9/10** as a portfolio-grade codebase (strong **middle / senior** frontend signal). Shipping **react-router-dom**, a **global state** layer, and a **BFF for API keys** would align the app with expectations for a **commercial** product, not only a demo.
+
+---
+
 ## 🤝 Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
