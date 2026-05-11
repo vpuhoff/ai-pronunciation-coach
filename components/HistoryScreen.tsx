@@ -272,7 +272,7 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
       ) : (
         <>
             <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Recent Sessions</h3>
-            <div className="grid grid-cols-1 gap-4 overflow-y-auto pb-20">
+            <div className="grid grid-cols-1 gap-4 pb-20">
             {[...history].reverse().map((item) => {
                 const langLabel = getLanguageLabel(item.phrase);
                 return (
