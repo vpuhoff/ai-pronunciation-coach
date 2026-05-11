@@ -2,9 +2,31 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { PhraseData, Language, Difficulty, WordAnalysis, AnalysisResult } from "../types";
 
-// Ensure API Key exists
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+let cachedKey = '';
+let cachedAi: GoogleGenAI | null = null;
+
+const getApiKey = (): string => {
+  // 1) Prefer user-provided key set at session start (stored locally).
+  // 2) Fallback to build-time env for local dev/preview.
+  try {
+    const fromStorage = localStorage.getItem('geminiApiKey');
+    if (fromStorage) return fromStorage;
+  } catch {
+    // ignore (e.g. storage disabled)
+  }
+
+  return process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+};
+
+const getAi = (): GoogleGenAI | null => {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+  if (!cachedAi || cachedKey !== apiKey) {
+    cachedKey = apiKey;
+    cachedAi = new GoogleGenAI({ apiKey });
+  }
+  return cachedAi;
+};
 
 export const generateTrainingContent = async (
   targetLang: Language,
@@ -12,7 +34,8 @@ export const generateTrainingContent = async (
   topic: string,
   difficulty: Difficulty
 ): Promise<PhraseData[]> => {
-  if (!apiKey) {
+  const ai = getAi();
+  if (!ai) {
     console.error("API Key missing");
     return mockPhrases(targetLang, topic);
   }
@@ -76,7 +99,8 @@ export const generateCustomPhrase = async (
     targetLang: Language,
     nativeLang: Language
 ): Promise<PhraseData | null> => {
-    if (!apiKey) return null;
+    const ai = getAi();
+    if (!ai) return null;
 
     try {
         const prompt = `
@@ -133,7 +157,8 @@ export const generateCustomPhrase = async (
 };
 
 export const generateReferenceAudio = async (text: string, voiceName: string = 'Kore'): Promise<string | undefined> => {
-    if (!apiKey) return undefined;
+    const ai = getAi();
+    if (!ai) return undefined;
 
     try {
         const response = await ai.models.generateContent({
@@ -165,7 +190,8 @@ export const generateCoachFeedback = async (
 ): Promise<{ overallScore: number, feedback: string, words: WordAnalysis[], detailedScore?: any }> => {
     
     // Default fallback if no API key
-    if(!apiKey) {
+    const ai = getAi();
+    if(!ai) {
         return {
             overallScore: 75,
             feedback: "Simulated Feedback (No API Key): Good attempt. Your intonation was mostly flat, try to add more energy.",
@@ -317,7 +343,8 @@ export const askAiCoach = async (
     userQuestion: string,
     previousFeedback: string
 ): Promise<string> => {
-    if (!apiKey) return "Please provide an API Key to ask questions.";
+    const ai = getAi();
+    if (!ai) return "Please provide an API Key to ask questions.";
 
     try {
         const prompt = `

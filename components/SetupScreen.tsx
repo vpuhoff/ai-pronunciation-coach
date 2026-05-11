@@ -11,6 +11,7 @@ interface Props {
 
 const SetupScreen: React.FC<Props> = ({ onStart, onHistory, isLoading }) => {
   // Lazy initialize state from localStorage
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
   const [elevenLabsKey, setElevenLabsKey] = useState(() => localStorage.getItem('elevenLabsKey') || '');
   
   const [config, setConfig] = useState<SessionConfig>(() => ({
@@ -18,8 +19,15 @@ const SetupScreen: React.FC<Props> = ({ onStart, onHistory, isLoading }) => {
     nativeLanguage: (localStorage.getItem('prosody_nativeLang') as Language) || Language.SPANISH,
     topic: localStorage.getItem('prosody_topic') || TOPICS[0],
     difficulty: (localStorage.getItem('prosody_difficulty') as Difficulty) || Difficulty.INTERMEDIATE,
+    geminiApiKey: localStorage.getItem('geminiApiKey') || '',
     elevenLabsApiKey: localStorage.getItem('elevenLabsKey') || ''
   }));
+
+  const handleGeminiKeyChange = (value: string) => {
+    setGeminiKey(value);
+    localStorage.setItem('geminiApiKey', value);
+    setConfig(prev => ({ ...prev, geminiApiKey: value }));
+  };
 
   const handleKeyChange = (value: string) => {
     setElevenLabsKey(value);
@@ -76,19 +84,35 @@ const SetupScreen: React.FC<Props> = ({ onStart, onHistory, isLoading }) => {
         {/* Right Side: Configuration Form */}
         <div className="w-full bg-slate-800/50 p-6 md:p-8 rounded-3xl border border-slate-700/50 backdrop-blur-xl shadow-2xl">
             
-            {/* ElevenLabs Settings */}
-            <div className="space-y-3 border-b border-slate-700/50 pb-6 mb-6">
-                <label className="text-sm font-bold text-brand-accent flex items-center gap-2 uppercase tracking-wide">
-                    <Key className="w-4 h-4" /> ElevenLabs API Key
-                </label>
-                <input 
-                    type="password"
-                    placeholder="sk_..."
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl p-4 focus:ring-2 focus:ring-brand-accent focus:border-transparent outline-none transition-all placeholder:text-slate-600 text-sm font-mono"
-                    value={elevenLabsKey}
-                    onChange={(e) => handleKeyChange(e.target.value)}
-                />
-                <p className="text-xs text-slate-500">Required for high-quality voice generation.</p>
+            {/* API Keys */}
+            <div className="space-y-5 border-b border-slate-700/50 pb-6 mb-6">
+                <div className="space-y-3">
+                    <label className="text-sm font-bold text-brand-primary flex items-center gap-2 uppercase tracking-wide">
+                        <Key className="w-4 h-4" /> Gemini API Key
+                    </label>
+                    <input 
+                        type="password"
+                        placeholder="AIza... / ..."
+                        className="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl p-4 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600 text-sm font-mono"
+                        value={geminiKey}
+                        onChange={(e) => handleGeminiKeyChange(e.target.value)}
+                    />
+                    <p className="text-xs text-slate-500">Required to generate lessons and coaching feedback.</p>
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-sm font-bold text-brand-accent flex items-center gap-2 uppercase tracking-wide">
+                        <Key className="w-4 h-4" /> ElevenLabs API Key (optional)
+                    </label>
+                    <input 
+                        type="password"
+                        placeholder="sk_..."
+                        className="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl p-4 focus:ring-2 focus:ring-brand-accent focus:border-transparent outline-none transition-all placeholder:text-slate-600 text-sm font-mono"
+                        value={elevenLabsKey}
+                        onChange={(e) => handleKeyChange(e.target.value)}
+                    />
+                    <p className="text-xs text-slate-500">Optional: used for higher-quality reference voice generation.</p>
+                </div>
             </div>
 
             <div className="space-y-5">
@@ -143,12 +167,12 @@ const SetupScreen: React.FC<Props> = ({ onStart, onHistory, isLoading }) => {
 
             <button
                 onClick={() => onStart(config)}
-                disabled={isLoading || !elevenLabsKey}
+                disabled={isLoading || !geminiKey}
                 className="mt-8 w-full bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
                 {isLoading ? (
                     <span className="animate-pulse">Generating Lesson...</span>
-                ) : !elevenLabsKey ? (
+                ) : !geminiKey ? (
                     <span>Enter API Key to Start</span>
                 ) : (
                     <>

@@ -26,6 +26,7 @@ export interface SessionConfig {
   nativeLanguage: Language;
   topic: string;
   difficulty: Difficulty;
+  geminiApiKey?: string;
   elevenLabsApiKey?: string;
 }
 

@@ -76,12 +76,12 @@ Unlike standard language apps that only check if you said the correct word, this
     ```
 
 3.  **Environment Setup:**
-    Create a `.env` file in the root directory and add your Google API key.
+    Create a `.env` file in the root directory and add your Google Gemini API key.
     
     ```env
-    API_KEY=your_google_gemini_api_key_here
+    GEMINI_API_KEY=your_google_gemini_api_key_here
     ```
-    *(Note: The ElevenLabs key is entered via the UI Settings screen for security).*
+    *(Note: You can also enter the Gemini API key on the session start screen; it will be stored locally in your browser. The ElevenLabs key is also entered via the UI.)*
 
 4.  **Run the development server:**
     ```bash
