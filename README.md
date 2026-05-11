@@ -35,7 +35,9 @@ Unlike standard language apps that only check if you said the correct word, this
 
 ### 📊 History & Progress
 *   **Session Tracking:** Saves all your attempts locally using IndexedDB (for heavy audio blobs) and LocalStorage (for metadata).
-*   **Analytics:** Visual charts tracking your daily activity and average score improvements over time.
+*   **Analytics (30 days):** Charts for **daily phrase activity** and **average score** so you can see trends at a glance.
+*   **Estimated practice time:** A separate chart approximates how long you practiced each day by counting history entries and assuming **~3 minutes per saved session** (a simple planning estimate, not precise timing).
+*   **Weekly detailed metrics:** For the **last 7 days**, sessions that include the **deep analysis** breakdown are plotted on **one chart** with multiple lines (all **0–100**): phoneme accuracy, completeness, intonation, rhythm, stress, smoothness, and confidence—so you can compare dimensions across attempts.
 *   **Export/Import:** Backup your progress or share datasets via JSON export.
 
 ---
@@ -81,19 +83,26 @@ Unlike standard language apps that only check if you said the correct word, this
     ```env
     GEMINI_API_KEY=your_google_gemini_api_key_here
     ```
-    *(Note: You can also enter the Gemini API key on the session start screen; it will be stored locally in your browser. The ElevenLabs key is also entered via the UI.)*
+    *(Note: You can also enter the Gemini API key on the **session start** screen; it will be stored locally in your browser. An **ElevenLabs** key can be entered there too and is optional.)*
 
 4.  **Run the development server:**
     ```bash
-    npm start
+    npm run dev
     ```
-    Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+    The dev server uses port **3000** by default (see `vite.config.ts`). If that port is busy, Vite will pick the next free port and print it in the terminal.
+
+    Production build and local preview:
+
+    ```bash
+    npm run build
+    npm run preview
+    ```
 
 ---
 
 ## 📖 How to Use
 
-1.  **Setup Session:** Choose your target language (e.g., English, Spanish, Mandarin), native language, topic, and difficulty.
+1.  **Setup Session:** Enter your **Gemini API key** (required to generate lessons and AI feedback), optionally add **ElevenLabs**, then choose target language, native language, topic, and difficulty.
 2.  **Training Screen:** 
     *   Listen to the reference audio.
     *   Record your attempt.
@@ -103,7 +112,7 @@ Unlike standard language apps that only check if you said the correct word, this
     *   Check the **Deep Analysis** grid for detailed metrics.
     *   Compare the **Pitch Contour** graph to see where your intonation went flat.
     *   Read the **AI Coach's feedback** or ask follow-up questions.
-4.  **History:** Review past sessions, practice old phrases again, or view your progress charts.
+4.  **History:** Review past sessions, practice old phrases again, and explore **progress charts**—including **estimated practice time** and the **7-day multi-metric** view when detailed scores are available.
 
 ---
 
