@@ -1,7 +1,7 @@
 
 import React, { useRef, useMemo } from 'react';
 import { HistoryItem } from '../types';
-import { ArrowLeft, Download, Upload, Play, Calendar, Star, Trash2, TrendingUp, Activity } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Play, Calendar, Trash2, TrendingUp, Activity, Clock, Layers } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -11,8 +11,28 @@ import {
   ResponsiveContainer, 
   AreaChart, 
   Area,
-  CartesianGrid
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend
 } from 'recharts';
+
+/** Rough estimate: each history card ≈ one practice attempt (~3 min). */
+const MINUTES_PER_HISTORY_ITEM = 3;
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+type WeeklyBreakdownRow = {
+  tickLabel: string;
+  xLabel: string;
+  phonemeAccuracy: number;
+  completeness: number;
+  intonation: number;
+  rhythm: number;
+  stress: number;
+  smoothness: number;
+  confidence: number;
+};
 
 interface Props {
   history: HistoryItem[];
@@ -28,7 +48,14 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
   // --- Statistics Logic ---
   const statsData = useMemo(() => {
     const today = new Date();
-    const data: { date: string; displayDate: string; count: number; totalScore: number; avgScore: number }[] = [];
+    const data: {
+      date: string;
+      displayDate: string;
+      count: number;
+      totalScore: number;
+      avgScore: number;
+      practiceMinutes: number;
+    }[] = [];
     const historyMap = new Map<string, { count: number; totalScore: number }>();
 
     // 1. Group history by date (YYYY-MM-DD)
@@ -55,15 +82,44 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
         
         const entry = historyMap.get(dateKey);
         
+        const count = entry ? entry.count : 0;
         data.push({
             date: dateKey,
             displayDate,
-            count: entry ? entry.count : 0,
+            count,
             totalScore: entry ? entry.totalScore : 0,
-            avgScore: entry ? Math.round(entry.totalScore / entry.count) : 0
+            avgScore: entry ? Math.round(entry.totalScore / entry.count) : 0,
+            practiceMinutes: count * MINUTES_PER_HISTORY_ITEM
         });
     }
     return data;
+  }, [history]);
+
+  const weeklyBreakdownData = useMemo((): WeeklyBreakdownRow[] => {
+    const cutoff = Date.now() - WEEK_MS;
+    return history
+      .filter(item => item.timestamp >= cutoff && item.result.detailedScore)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map((item, index) => {
+        const ds = item.result.detailedScore!;
+        const date = new Date(item.timestamp);
+        return {
+          tickLabel: `#${index + 1}`,
+          xLabel: date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          phonemeAccuracy: ds.articulation?.phonemeAccuracy ?? 0,
+          completeness: ds.articulation?.completeness ?? 0,
+          intonation: ds.prosody?.intonation ?? 0,
+          rhythm: ds.prosody?.rhythm ?? 0,
+          stress: ds.prosody?.stress ?? 0,
+          smoothness: ds.fluency?.smoothness ?? 0,
+          confidence: ds.impression?.confidence ?? 0,
+        };
+      });
   }, [history]);
 
   const formatDate = (ts: number) => {
@@ -130,13 +186,41 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
           <p className="text-slate-300 text-sm font-medium mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
              <p key={index} style={{ color: entry.color }} className="text-sm font-bold">
-               {entry.name}: {entry.value}
+               {entry.name}: {entry.name === 'Practice (min)' && typeof entry.payload?.count === 'number'
+                 ? `${entry.value} (${entry.payload.count}×${MINUTES_PER_HISTORY_ITEM} min)`
+                 : entry.value}
              </p>
           ))}
         </div>
       );
     }
     return null;
+  };
+
+  const DetailedWeekTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const row = payload[0].payload as WeeklyBreakdownRow;
+    const rows: { label: string; value: number; color: string }[] = [
+      { label: 'Phoneme accuracy', value: row.phonemeAccuracy, color: '#22d3ee' },
+      { label: 'Completeness', value: row.completeness, color: '#38bdf8' },
+      { label: 'Intonation', value: row.intonation, color: '#a78bfa' },
+      { label: 'Rhythm', value: row.rhythm, color: '#f472b6' },
+      { label: 'Stress', value: row.stress, color: '#fb923c' },
+      { label: 'Smoothness', value: row.smoothness, color: '#4ade80' },
+      { label: 'Confidence', value: row.confidence, color: '#facc15' },
+    ];
+    return (
+      <div className="bg-slate-800 border border-slate-700 p-3 rounded-lg shadow-xl max-w-[220px]">
+        <p className="text-slate-200 text-sm font-semibold mb-2">{row.xLabel}</p>
+        <ul className="space-y-1 text-xs">
+          {rows.map(r => (
+            <li key={r.label} className="font-medium" style={{ color: r.color }}>
+              {r.label}: {r.value}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   };
 
   return (
@@ -189,7 +273,8 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
 
       {/* Analytics Charts */}
       {history.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="space-y-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Chart 1: Activity */}
             <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
                 <div className="flex items-center gap-2 mb-4">
@@ -258,6 +343,107 @@ const HistoryScreen: React.FC<Props> = ({ history, onBack, onPractice, onImport,
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
+            </div>
+        </div>
+
+            {/* Chart 3: Estimated practice time (3 min per history card) */}
+            <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
+                <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-5 h-5 text-brand-accent" />
+                    <h3 className="text-slate-200 font-semibold">Practice time (estimated)</h3>
+                </div>
+                <p className="text-xs text-slate-500 mb-4">
+                    {MINUTES_PER_HISTORY_ITEM} minutes per history entry · last 30 days
+                </p>
+                <div className="h-48 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={statsData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                            <XAxis
+                                dataKey="displayDate"
+                                tick={{ fill: '#64748b', fontSize: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                interval="preserveStartEnd"
+                                minTickGap={20}
+                            />
+                            <YAxis
+                                tick={{ fill: '#64748b', fontSize: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                width={36}
+                                allowDecimals={false}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Line
+                                type="monotone"
+                                dataKey="practiceMinutes"
+                                name="Practice (min)"
+                                stroke="#8b5cf6"
+                                strokeWidth={2}
+                                dot={{ fill: '#8b5cf6', r: 3 }}
+                                activeDot={{ r: 5 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Chart 4: Detailed metrics per session (last 7 days, 0–100) */}
+            <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
+                <div className="flex items-center gap-2 mb-1">
+                    <Layers className="w-5 h-5 text-sky-400" />
+                    <h3 className="text-slate-200 font-semibold">Detailed metrics by session</h3>
+                </div>
+                <p className="text-xs text-slate-500 mb-4">
+                    Last 7 days · one point per history entry with breakdown · scale 0–100
+                </p>
+                {weeklyBreakdownData.length === 0 ? (
+                    <div className="h-56 flex items-center justify-center text-slate-500 text-sm text-center px-4">
+                        No sessions with a detailed score in the last 7 days.
+                    </div>
+                ) : (
+                    <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                                data={weeklyBreakdownData}
+                                margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                <XAxis
+                                    dataKey="tickLabel"
+                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    interval={0}
+                                    angle={weeklyBreakdownData.length > 12 ? -35 : 0}
+                                    textAnchor={weeklyBreakdownData.length > 12 ? 'end' : 'middle'}
+                                    height={weeklyBreakdownData.length > 12 ? 48 : 28}
+                                />
+                                <YAxis
+                                    domain={[0, 100]}
+                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    width={32}
+                                    allowDecimals={false}
+                                />
+                                <Tooltip content={<DetailedWeekTooltip />} />
+                                <Legend
+                                    wrapperStyle={{ fontSize: '10px', paddingTop: 8 }}
+                                    formatter={(value: string) => <span className="text-slate-400">{value}</span>}
+                                />
+                                <Line type="monotone" dataKey="phonemeAccuracy" name="Phoneme" stroke="#22d3ee" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="completeness" name="Complete" stroke="#38bdf8" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="intonation" name="Intonation" stroke="#a78bfa" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="rhythm" name="Rhythm" stroke="#f472b6" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="stress" name="Stress" stroke="#fb923c" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="smoothness" name="Smooth" stroke="#4ade80" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                                <Line type="monotone" dataKey="confidence" name="Confidence" stroke="#facc15" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </div>
         </div>
       )}
