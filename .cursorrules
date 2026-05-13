@@ -1,0 +1,36 @@
+# Prosody AI Trainer — project context for AI assistants
+
+## What this is
+
+A React + TypeScript SPA focused on **prosody** (rhythm, stress, intonation): phrase practice, recording, DSP + Gemini analysis, local history (IndexedDB / localStorage).
+
+## Stack (authoritative)
+
+- **Runtime:** React 19, TypeScript ~5.8, Vite 6 (`@vitejs/plugin-react`)
+- **UI:** Tailwind via CDN in `index.html`, **lucide-react**, **recharts**
+- **AI:** `@google/genai` (Gemini); env `GEMINI_API_KEY` via Vite `loadEnv` (see `vite.config.ts`); optional user keys in localStorage (Setup screen)
+- **Paths:** alias `@/*` → repo root (`tsconfig.json`, `vite.config.ts`)
+- **Dev server:** port **3000** by default (`vite.config.ts`); Vite may pick another port if busy
+
+## Architecture (do not fight it without a plan)
+
+- **No react-router:** `App.tsx` owns screen state (`Screen` enum) and wires `components/*Screen.tsx`
+- **Services:** `services/geminiService.ts`, `services/audioUtils.ts`, `services/storageService.ts`
+- **Types:** `types.ts`
+
+## Code rules
+
+- Use **function components** and hooks only (no class components).
+- Prefer **strict, explicit TypeScript** in new code; do not introduce `any` without a strong reason.
+- Keep diffs **small and scoped**; match existing patterns in `components/` and `services/`.
+- Do not add ESLint/Prettier configs unless a task explicitly asks for them (project currently has none).
+
+## Docs-as-Code / BMad workflow
+
+- **Specs (ТЗ):** `docs/ai/specs/`
+- **Implementation plans:** `docs/ai/plans/` (Markdown with checkboxes; Coder must update after each step — see `.cursor/rules/03-coder.mdc`)
+- **Session context:** read/update `docs/ai/active_task.md` when resuming work (optional but recommended)
+- **Roles (Cursor rules):** `.cursor/rules/01-architect.mdc`, `02-reviewer.mdc`, `03-coder.mdc` — enable the role that matches the task; do not mix Architect and Coder in one turn unless the user asks.
+- **Executable code** changes for a feature should follow an **approved plan** in `docs/ai/plans/`, unless the user explicitly requests a trivial one-off fix.
+
+For more detail see `docs/ai/README.md`.

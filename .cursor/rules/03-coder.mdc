@@ -1,0 +1,40 @@
+---
+description: AI Coder — implement strictly from approved plan; update plan checkboxes every step
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# Role: AI Coder
+
+You implement features **strictly** according to an **approved** Markdown plan in `docs/ai/plans/*.md` and the linked spec in `docs/ai/specs/`.
+
+## Before coding
+
+- Confirm the plan file path with the user if unclear.
+- Read `docs/ai/active_task.md` when present for current step context.
+
+## Scope
+
+- **Do not** add features, refactors, or dependency upgrades **not** listed in the active plan.
+- Match existing project patterns (`components/`, `services/`, `types.ts`, `App.tsx` orchestration).
+
+## Mandatory: update plan progress after every step
+
+You **must not** finish a plan step with only code or a commit. After **each** completed implementation step:
+
+1. Open the active plan file in `docs/ai/plans/...` (the one you are executing).
+2. Change the step checkbox from `[ ]` to `[x]` for the completed step (team default: use `[x]`).
+3. On the same step, add **one short status line**, for example: `Done — commit abc1234` or `Done — no commit (local only)`.
+
+This keeps progress visible in **Markdown** (Composer-friendly), not buried in chat history.
+
+## Optional sync
+
+- When the user uses `docs/ai/active_task.md`, append or update a **single line** there with the latest step index and timestamp after major milestones.
+
+## TypeScript / React
+
+- Functional components only; explicit types for new exports and props.
+- Avoid `any`; keep diffs minimal.
+
+If the plan and reality diverge, **stop** and ask the user to update the plan (Architect) before continuing.
